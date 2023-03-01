@@ -1,3 +1,11 @@
+"""
+ @Author: SheepDog
+ @Email: landfallbox@gmail.com
+ @FileName: main.py
+ @DateTime: 2023/3/1 17:58
+ @SoftWare: PyCharm
+"""
+
 import torch
 import torchvision
 from torch.utils.data import DataLoader
@@ -186,3 +194,4 @@ def test():
 
 # 测试网络的准确度
 test()
+
