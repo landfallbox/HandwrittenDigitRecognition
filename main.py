@@ -27,19 +27,19 @@ torch.manual_seed(random_seed)
 # 第四个参数（可选）：torchvision.transforms包含一些列图像预处理方法。其中，Compose串联多个图片变换的操作。
 # ToTensor将原始的PILImage格式或者numpy.array格式的数据格式化为可被pytorch快速处理的张量类型。
 # Normalize将图像标准化
-dataset = torchvision.datasets.MNIST('./data/', train=True, download=True,
-                                     transform=torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
-                                                                               torchvision.transforms.Normalize(
-                                                                                   (0.1307,), (0.3081,))]))
+dataset_train = torchvision.datasets.MNIST('./data/', train=True, download=True,
+                                           transform=torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
+                                                                                     torchvision.transforms.Normalize(
+                                                                                         (0.1307,), (0.3081,))]))
 # shuffle=True会在每个epoch重新打乱数据
-train_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size_train, shuffle=True)
+train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=batch_size_train, shuffle=True)
 
 # 加载测试数据集，创建测试器
-dataset = torchvision.datasets.MNIST('./data/', train=False, download=True,
-                                     transform=torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
-                                                                               torchvision.transforms.Normalize(
-                                                                                   (0.1307,), (0.3081,))]))
-test_loader = torch.utils.data.DataLoader(dataset, batch_size=batch_size_test, shuffle=True)
+dataset_test = torchvision.datasets.MNIST('./data/', train=False, download=True,
+                                          transform=torchvision.transforms.Compose([torchvision.transforms.ToTensor(),
+                                                                                    torchvision.transforms.Normalize(
+                                                                                        (0.1307,), (0.3081,))]))
+test_loader = torch.utils.data.DataLoader(dataset_test, batch_size=batch_size_test, shuffle=True)
 
 
 class Net(nn.Module):
@@ -69,8 +69,18 @@ class Net(nn.Module):
         return F.log_softmax(x, dim=1)
 
 
-# 初始化网络和优化器
-network = Net()
+# 如果GPU可用则使用GPU训练和测试。否则，使用CPU
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# 初始化网络
+network = Net().to(device)
+
+# print(torch.cuda.is_available())
+
+# 查看网络结构
+# torchinfo.summary(network)
+
+# 初始化优化器
 optimizer = optim.SGD(network.parameters(), lr=learning_rate, momentum=momentum)
 
 # 训练时的误差
@@ -80,15 +90,24 @@ train_counter = []
 # 测试时的误差
 test_losses = []
 # 测试次数
-test_counter = [i*len(train_loader.dataset) for i in range(n_epochs + 1)]
+test_counter = [i * len(dataset_test) for i in range(n_epochs + 1)]
 
 
 def train(epoch):
+    # 加载网络模型和参数
+    network.load_state_dict(torch.load('./model.pth'))
+    # 加载优化器
+    optimizer.load_state_dict(torch.load('./optimizer.pth'))
+
     # 设置网络为训练模式
     network.train()
 
     # 训练
     for batch_id, (data, target) in enumerate(train_loader):
+        # 数据和标签加载到GPU上
+        data = data.to(device)
+        target = target.to(device)
+
         # 手动设置梯度为0
         optimizer.zero_grad()
 
@@ -96,7 +115,7 @@ def train(epoch):
         output = network(data)
 
         # 计算损失
-        loss = F.nll_loss(output, target)
+        loss = F.nll_loss(output, target).to(device)
 
         # 将误差反向传播，计算梯度
         loss.backward()
@@ -106,22 +125,64 @@ def train(epoch):
         if batch_id % log_interval == 0:
             # 打印训练日志
             print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(epoch, batch_id * len(data),
-                                                                           len(train_loader.dataset),
+                                                                           len(dataset_train),
                                                                            100. * batch_id / len(train_loader),
                                                                            loss.item()))
             # 保存训练的误差
             train_losses.append(loss.item())
             # 保存训练的次数
-            train_counter.append((batch_id * 64) + ((epoch - 1) * len(train_loader.dataset)))
-            # 保存网络模型参数
+            train_counter.append((batch_id * 64) + ((epoch - 1) * len(dataset_train)))
+            # 保存网络模型和参数
             torch.save(network.state_dict(), './model.pth')
-            # 保存权重、偏置等
+            # 保存优化器
             torch.save(optimizer.state_dict(), './optimizer.pth')
 
 
 train(1)
 
 
+# 多次迭代训练神经网络
+# n = 1
+# while n <= n_epochs:
+#     train(n)
+#     n += 1
 
 
+def test():
+    # 加载网络模型和参数
+    network.load_state_dict(torch.load('./model.pth'))
+    # 加载优化器
+    optimizer.load_state_dict(torch.load('./optimizer.pth'))
 
+    # 测试模式
+    network.eval()
+
+    # 初始化
+    test_loss = 0
+    correct = 0
+
+    # 关闭反向传播时的自动求导，节约内存
+    with torch.no_grad():
+        for data, target in test_loader:
+            # 数据和标签加载到GPU上
+            data = data.to(device)
+            target = target.to(device)
+
+            # 用训练好的网络得到预测值
+            output = network(data)
+            # 一个batch中的误差相加
+            test_loss += F.nll_loss(output, target, reduction='mean').item()
+            # 找到最大值的下标
+            pred = output.data.max(1, keepdim=True)[1]
+            # 每判断正确一个结果，correct加一
+            correct += pred.eq(target.data.view_as(pred)).sum()
+
+    test_loss /= len(dataset_test)
+    test_losses.append(test_loss)
+    print('\nTest set: Avg. loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(test_loss,
+                                                                              correct, len(dataset_test),
+                                                                              100. * correct / len(dataset_test)))
+
+
+# 测试网络的准确度
+test()
