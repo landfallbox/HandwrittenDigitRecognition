@@ -18,6 +18,8 @@
 
 保存优化器的数据。
 
+> 在初步构建项目时，主要参考了以下文章：[用PyTorch实现MNIST手写数字识别(非常详细) - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/137571225)
+
 # HandwrittenDigitRecognition
 
 This repository is a graduation project for undergraduates: using PyTorch to realize MNIST handwritten digit recognition.
@@ -37,3 +39,5 @@ This file is where network model and parameters are saved.
 ### optimizer.pth
 
 This file is where optimizer is saved.
+
+> During the preliminary construction of the project, the following article was mainly referred to: [用PyTorch实现MNIST手写数字识别(非常详细) - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/137571225) 
