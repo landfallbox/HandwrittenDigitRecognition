@@ -108,7 +108,5 @@ def train(epoch):
 
 
 # 多次迭代训练神经网络
-n = 1
-while n <= n_epochs:
+for n in range(n_epochs):
     train(n)
-    n += 1

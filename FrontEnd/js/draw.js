@@ -1,8 +1,8 @@
 window.onload=function(){
 	const canvas = document.getElementById('myCanvas');//1.获取画布
 	const ctx = canvas.getContext('2d');//2.获取上下文
-	const strokeStyleSelect = document.getElementById('strokeColorSelect');//改变颜色控件
-	const strokeLineWidth = document.getElementById('strokeLineWidth');//改变线条宽度控件
+	// const strokeStyleSelect = document.getElementById('strokeColorSelect');//改变颜色控件
+	// const strokeLineWidth = document.getElementById('strokeLineWidth');//改变线条宽度控件
 	const img = document.getElementById("image");
 	const btn = document.getElementById("btn")
 	
@@ -30,10 +30,10 @@ window.onload=function(){
 	
 	// 监听鼠标点击
 	btn.addEventListener("click", convertCanvasToImage);
-	
-	var planWebsocket = null;
-	var planIP = "127.0.0.1"; // IP地址
-	var planPort = "8080";    // 端口号
+
+	let planWebsocket = null;
+	const planIP = "127.0.0.1"; // IP地址
+	const planPort = "5000";    // 端口号
 	
 	function down(event) {
 		isOnOff = true;
@@ -89,12 +89,12 @@ window.onload=function(){
 	function initWebpack(url) {
 		if ('WebSocket' in window) {
 			// 通信地址
-			planWebsocket = new WebSocket('ws://'+ planIP +':' + planPort + '/vlcWebSocket'); 
-			planWebsocket.onopen = function (event) {
+			planWebsocket = new WebSocket('ws://'+ planIP +':' + planPort + '/test'); 
+			planWebsocket.onopen = function () {
 				console.log('建立连接');
 				
 				let sendData = {
-					"command": "get", "data": url
+					"url": url
 				}
 				planWebsocket.send(JSON.stringify(sendData));
 			}
@@ -102,15 +102,15 @@ window.onload=function(){
 			planWebsocket.onmessage = function (event) {
 				// console.log('收到消息:' + event.data)
 				let data = JSON.parse(event.data);
-				if (data.command == "success") {
-					var planData = data.data;//返回的数据
+				if (data.result === "success") {
+					const planData = data.data;//返回的数据
 					console.log(planData);
 				} else {
 					console.log("Failed");
 				}
 			}
 	 
-			planWebsocket.onclose = function (event) {
+			planWebsocket.onclose = function () {
 				console.log('连接关闭');
 			}
 	 
