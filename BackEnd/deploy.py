@@ -12,7 +12,8 @@ import torch
 from PIL import Image
 from net import Net
 from flask import Flask, request
-from skimage import io
+import requests
+from io import BytesIO
 
 app = Flask(__name__)
 
@@ -26,13 +27,14 @@ def convert_to_tensor():
     # 获得图片的url
     img_url = data['url']
 
-    # 根据url读取图片
-    image = io.imread(img_url)
+    # 根据url读图片
+    response = requests.get(img_url)
+    img = Image.open(BytesIO(response.content))
 
-    io.imshow(image)
+    # io.imshow(image)
 
     # 读图片，灰度化
-    img = Image.convert('L')
+    img = img.convert('L')
     # img.show()
 
     # 改变图片大小：28*28
@@ -46,11 +48,11 @@ def convert_to_tensor():
     img = np.array(img).astype(np.float32)
 
     # 图片灰度后，是白底黑字，MNIST恰好相反
-    temp = np.ones([28, 28], dtype=np.float32)
-    for i in range(28):
-        for j in range(28):
-            temp[i, j] = 1 - (img[i, j] / 255 - 0.1307) / 0.3081
-    img = temp
+    # temp = np.ones([28, 28], dtype=np.float32)
+    # for i in range(28):
+    #     for j in range(28):
+    #         temp[i, j] = 1 - (img[i, j] / 255 - 0.1307) / 0.3081
+    # img = temp
 
     # 数组从 28*28 转 1*1*28*28
     img = np.expand_dims(img, 0)
@@ -59,22 +61,20 @@ def convert_to_tensor():
     # 转tensor
     img = torch.from_numpy(img)
 
-    return img
+    # 初始化网络，加载网络模型和参数
+    network = Net()
+    network.load_state_dict(torch.load('./model.pth'))
 
+    # 测试模式
+    network.eval()
 
-# 初始化网络，加载网络模型和参数
-# network = Net()
-# network.load_state_dict(torch.load('./model.pth'))
-#
-# # 测试模式
-# network.eval()
-#
-# # 如果GPU可用则使用GPU训练和测试。否则，使用CPU
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-# network.to(device)
-#
-# img = convert_to_tensor('./test/1.jpg').to(device)
-# predict = network(img).data.max(1, keepdim=True)[1]
-# print(predict)
+    # 如果GPU可用则使用GPU训练和测试。否则，使用CPU
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    network.to(device)
+
+    img = convert_to_tensor(img).to(device)
+    predict = network(img).data.max(1, keepdim=True)[1]
+    print(predict)
+
 
 app.run(debug=True, host='127.0.0.1', port=5000)

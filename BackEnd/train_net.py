@@ -5,6 +5,7 @@
  @DateTime: 2023/3/1 17:58
  @SoftWare: PyCharm
 """
+import os
 
 import torch
 import torchvision
@@ -27,8 +28,8 @@ momentum = 0.5
 # 打印日志的间隔
 log_interval = 10
 
-# random_seed = 1
-# torch.manual_seed(random_seed)
+random_seed = 1
+torch.manual_seed(random_seed)
 
 # 加载训练数据集，创建训练器
 # 第一个参数：MNIST数据集的位置
@@ -64,9 +65,12 @@ train_counter = []
 
 def train(epoch):
     # 加载网络模型和参数
-    network.load_state_dict(torch.load('./model.pth'))
+    if os.path.exists('./model.pth'):
+        network.load_state_dict(torch.load('./model.pth'))
+
     # 加载优化器
-    optimizer.load_state_dict(torch.load('./optimizer.pth'))
+    if os.path.exists('./optimizer.pth'):
+        optimizer.load_state_dict(torch.load('./optimizer.pth'))
 
     # 设置网络为训练模式
     network.train()
@@ -84,16 +88,18 @@ def train(epoch):
         output = network(data)
 
         # 计算损失
+        # nll_loss与CrossEntropyLoss的区别在于，CrossEntropyLoss会自动添加softmax层，而nll_loss不会
         loss = f.nll_loss(output, target).to(device)
 
         # 将误差反向传播，计算梯度
         loss.backward()
+
         # 更新参数
         optimizer.step()
 
         if batch_id % log_interval == 0:
             # 打印训练日志
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(epoch, batch_id * len(data),
+            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(epoch + 1, batch_id * len(data),
                                                                            len(dataset_train),
                                                                            100. * batch_id / len(train_loader),
                                                                            loss.item()))
@@ -110,3 +116,5 @@ def train(epoch):
 # 多次迭代训练神经网络
 for n in range(n_epochs):
     train(n)
+
+# train(1)
