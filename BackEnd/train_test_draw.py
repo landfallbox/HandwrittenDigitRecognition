@@ -27,8 +27,7 @@ def draw():
     plt.show()
 
 
-# test()  # 不加这个，后面画图就会报错：x and y must be the same size
 for epoch in range(1, epochs + 1):
     train(epoch)
     test()
-    draw()
+    # draw()

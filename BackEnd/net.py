@@ -48,7 +48,7 @@ class Net(nn.Module):
 
 # 训练相关变量
 # 整个数据集迭代次数
-epochs = 3
+epochs = 1
 # 一次训练的规模
 batch_size_train = 64
 # 学习率
