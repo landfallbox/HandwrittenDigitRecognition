@@ -29,7 +29,7 @@ FrontEnd
    ├─css
    │      style.css		样式表
    └─js
-           draw.js		处理用户写数字，与后端之间的数据传输，将后端的预测结果展示在前端
+   	draw.js		处理用户写数字，与后端之间的数据传输，将后端的预测结果展示在前端
 ```
 
 ### 后端
@@ -56,9 +56,19 @@ BackEnd
 
 ### Front end
 
+The frontend page is written using WebStorm 2022.3.4 based on HTML 5, JS, and CSS.
+
 ### Back end
 
-Back-end neural network is written using PyCharm 2022.2.3 based on Python 3.8, built, trained and tested with PyTorch 1.7.1, CUDA 11.0 and CUDNN 8004, and version control is implemented using Git. Note that the versions of PyTorch, CUDA and CUDNN depend on the GPU of the computer running the project. For details, please refer to the NVIDIA developer website and PyTorch official website.
+The backend is written using PyCharm 2022.2.3 based on Python 3.8.
+
+Build, train, and test neural networks using PyTorch 1.7.1, CUDA 11.0, and CUDNN 8004.
+
+Deploy the model using Flask.
+
+Use Git for version control.
+
+> Note that the versions of PyTorch, CUDA, and CUDNN depend on the GPU of the computer running the project. For details, refer to the NVIDIA developer website, PyTorch official website, and more.
 
 ## Project structure
 
