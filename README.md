@@ -2,6 +2,8 @@
 
 ## 项目描述
 
+本项目是一个基于 CNN 的手写数字识别系统。用户在前端网页上的画板上书写数字，点击 “识别” 按钮，系统给出识别结果，即用户写的是数字几。
+
 ### 前端
 
 前端页面使用WebStorm 2022.3.4 基于HTML 5、JS、CSS编写。
@@ -53,6 +55,8 @@ BackEnd
 # HandwrittenDigitRecognition
 
 ## Project description
+
+The project is a handwritten digit recognition system based on CNN. When user write a number on the canvas on the web page and then click the "recognize" button, the system will give the prediction of what number did the user write. 
 
 ### Front end
 
