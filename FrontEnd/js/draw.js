@@ -5,6 +5,7 @@ window.onload=function(){
 	// const strokeLineWidth = document.getElementById('strokeLineWidth');//改变线条宽度控件
 	const img = document.getElementById("image");
 	const btn = document.getElementById("btn")
+	const prediction = document.getElementById('prediction');
 	
 	// 给画板填充颜色
 	ctx.fillStyle = '000000';
@@ -29,11 +30,7 @@ window.onload=function(){
 	canvas.addEventListener('mouseup', up, false);
 	
 	// 监听鼠标点击
-	btn.addEventListener("click", convertCanvasToImage);
-
-	let planWebsocket = null;
-	const planIP = "127.0.0.1"; // IP地址
-	const planPort = "5000";    // 端口号
+	btn.addEventListener("click", send);
 	
 	function down(event) {
 		isOnOff = true;
@@ -64,61 +61,52 @@ window.onload=function(){
 	}
 	
 	
-	function convertCanvasToImage() {  
+	function send() {
 	    // 新Image对象，可以理解为DOM  
 	    // var image = new Image(); 
 	    // canvas.toDataURL 返回的是一串Base64编码的URL
 	    // 指定格式 JPG  
 	    img.src = canvas.toDataURL("image/jpg");  
-	    // return image;  
-		
-		// 初始化websocket
-		initWebpack(img.src);
+	    // return image;
+
+		console.log(img.src)
+
+		// 以json格式向后端发送图片的url
+		fetch(`http://127.0.0.1:5000/test`, {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({
+				url: img.src
+			})
+		})
+			.then(response => {
+				if (!response.ok) {
+					throw new Error('Network response was not ok');
+				}
+				return response.json();
+			})
+			.then(data => {
+				let predict = null;
+				if (data.result === 'success') {
+					prediction.innerHTML = '您书写的数字是：' + data.predict;
+				} else if (data.result === 'fail') {
+					console.log('fail')
+				}
+			})
+			.catch(error => {
+				console.error('Error:', error);
+			});
 		
 		// 清空画布
 		// canvas.clearRect(0, 0, canvas.width, canvas.height);
-		canvas.width = canvas.width;
-		canvas.height = canvas.height;
+		canvas.width = canvas["width"];
+		canvas.height = canvas["height"];
 		
 		// 给画板填充颜色，为下一个用户写下一个字作准备
 		ctx.fillStyle = '000000';
 		ctx.fillRect(0, 0, canvas.width, canvas.height)
 	}
-	
-	// 初始化WebSocket
-	function initWebpack(url) {
-		if ('WebSocket' in window) {
-			// 通信地址
-			planWebsocket = new WebSocket('ws://'+ planIP +':' + planPort + '/test'); 
-			planWebsocket.onopen = function () {
-				console.log('建立连接');
-				
-				let sendData = {
-					"url": url
-				}
-				planWebsocket.send(JSON.stringify(sendData));
-			}
-	 
-			planWebsocket.onmessage = function (event) {
-				// console.log('收到消息:' + event.data)
-				let data = JSON.parse(event.data);
-				if (data.result === "success") {
-					const planData = data.data;//返回的数据
-					console.log(planData);
-				} else {
-					console.log("Failed");
-				}
-			}
-	 
-			planWebsocket.onclose = function () {
-				console.log('连接关闭');
-			}
-	 
-			planWebsocket.onerror = function () {
-				alert('websocket通信发生错误！');
-			}
-		} else {
-			alert('该浏览器不支持websocket!');
-		}
-	}
+
 };
