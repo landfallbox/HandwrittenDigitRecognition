@@ -4,27 +4,44 @@
 
 ### 前端
 
-前端页面使用HBuilder X基于HTML 5、JS、CSS编写。
+前端页面使用WebStorm 2022.3.4 基于HTML 5、JS、CSS编写。
 
 ### 后端
 
-后端神经网络使用 PyCharm 2022.2.3 基于 Python 3.8 编写，借助 PyTorch 1.7.1、CUDA 11.0、CUDNN 8004 搭建、训练和测试网络，使用 Git 实现版本控制，使用TorchServe部署模型。注意，PyTorch、CUDA、CUDNN 三者的版本取决于运行项目的电脑的 GPU，具体参考 NVIDIA 开发者网站，PyTorch 官网等。
+后端使用 PyCharm 2022.2.3 基于 Python 3.8 编写。
+
+借助 PyTorch 1.7.1、CUDA 11.0、CUDNN 8004 搭建、训练和测试神经网络。
+
+使用 Flask 部署模型。
+
+使用 Git 实现版本控制。
+
+> 注意，PyTorch、CUDA、CUDNN 三者的版本取决于运行项目的电脑的 GPU，具体参考 NVIDIA 开发者网站，PyTorch 官网等。
 
 ## 项目结构
 
 ### 前端
 
+```
+FrontEnd
+   │  index.html		主页面
+   │      
+   ├─css
+   │      style.css		样式表
+   └─js
+           draw.js		处理用户写数字，与后端之间的数据传输，将后端的预测结果展示在前端
+```
+
 ### 后端
 
 ```
-HandwrittenDigitRecognition
-│  Img2Tensor.py        把jpg转换成tensor
-│  Mnist2Img.py         将MNIST数据集的图片保存为jpg，标签保存为text
-│  model.pth            保存模型
-│  net.py               定义神经网络模型
-│  optimizer.pth        保存优化器内容
-│  test_net.py          在测试集上测试已训练的模型的准确率
-│  train_net.py         训练网络
+BackEnd
+│  deploy.py         将模型部署到服务器上 
+│  draw_loss.py      训练模型，测试模型，绘制全过程的损失变化       
+│  MNIST2Img.py      将MNIST数据集的图片保存为jpg，标签保存为text  
+│  model.pth         保存模型
+│  net.py            定义神经网络模型，模型如何训练、如何测试
+│  optimizer.pth     保存优化器内容
 │               
 └─data
   └─MNIST
@@ -47,17 +64,30 @@ Back-end neural network is written using PyCharm 2022.2.3 based on Python 3.8, b
 
 ### Front end
 
+```
+FrontEnd
+│  index.html		the web page
+│      
+├─css
+│      style.css    style sheet
+└─js
+		draw.js     enable users to write numbers on canvas, trasfer date to or receive data from the backend, show the prediction on the frontend
+            
+
+```
+
+
+
 ### Back end
 
 ```
-HandwrittenDigitRecognition
-│  Img2Tensor.py        tansfer jpg to tensor
-│  Mnist2Img.py         save MNIST as jpg and labels as text
-│  model.pth            where the network model is saved
-│  net.py               define CNN
-│  optimizer.pth        where the optimizer model is saved
-│  test_net.py          test the accuracy of the tained network
-│  train_net.py         train CNN
+BackEnd
+│  deploy.py            depoy the network to the server
+│  draw_loss.py         train, test the mmodule and record how the loss improve through the whole progress       
+│  MNIST2Img.py         save the dataset MINST, img as jpg and lable as text  
+│  model.pth            save the module
+│  net.py               define the structure of the neural network, how to train and how to test
+│  optimizer.pth        save optimizer
 │               
 └─data
   └─MNIST
@@ -82,4 +112,4 @@ HandwrittenDigitRecognition
 >
 > [(55条消息) 设置flask启动ip与端口_flask开放ip_bianlidou的博客-CSDN博客](https://blog.csdn.net/weixin_44936542/article/details/107343627)
 >
-> [hbuilderx右边的预览工具栏不见了,怎么显示出来_百度知道 (baidu.com)](https://zhidao.baidu.com/question/1891174912089858628.html)
+> [ChatGPT](https://chat.openai.com/chat)
