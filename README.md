@@ -39,7 +39,7 @@ FrontEnd
 ```
 BackEnd
 │  deploy.py         将模型部署到服务器上 
-│  draw_loss.py      训练模型，测试模型，绘制全过程的损失变化       
+│  train_test_draw.py      训练模型，测试模型，绘制全过程的损失变化       
 │  MNIST2Img.py      将MNIST数据集的图片保存为jpg，标签保存为text  
 │  model.pth         保存模型
 │  net.py            定义神经网络模型，模型如何训练、如何测试
@@ -97,7 +97,7 @@ FrontEnd
 ```
 BackEnd
 │  deploy.py            deploy the network to the server
-│  draw_loss.py         train, test the mmodule and record how the loss improve through the whole progress       
+│  train_test_draw.py         train, test the mmodule and record how the loss improve through the whole progress       
 │  MNIST2Img.py         save the dataset MINST, img as jpg and lable as text  
 │  model.pth            save the module
 │  net.py               define the structure of the neural network, how to train and how to test
