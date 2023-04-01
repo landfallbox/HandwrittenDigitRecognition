@@ -96,7 +96,7 @@ FrontEnd
 
 ```
 BackEnd
-│  deploy.py            depoy the network to the server
+│  deploy.py            deploy the network to the server
 │  draw_loss.py         train, test the mmodule and record how the loss improve through the whole progress       
 │  MNIST2Img.py         save the dataset MINST, img as jpg and lable as text  
 │  model.pth            save the module
