@@ -112,10 +112,6 @@ BackEnd
 
 > [用PyTorch实现MNIST手写数字识别(非常详细) - 知乎 (zhihu.com)](https://zhuanlan.zhihu.com/p/137571225)
 >
-> [(55条消息) js 使用HTML5 Websoket通信，发送和接收数据案例代码_js 发送 websocket 示例_程序媛zcx的博客-CSDN博客](https://blog.csdn.net/qq_40015157/article/details/114311028)
->
-> [阿里云服务器搭建及项目部署过程---小白篇-阿里云开发者社区 (aliyun.com)
->
 > [快速上手_Flask中文网](https://flask.net.cn/quickstart.html#quickstart)
 >
 > [(55条消息) Python通过url获取图片的几种方法_写代码的胡歌的博客-CSDN博客](https://blog.csdn.net/qq_37124237/article/details/80931894)
