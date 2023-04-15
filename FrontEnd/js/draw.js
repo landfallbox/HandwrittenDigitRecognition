@@ -1,13 +1,16 @@
 window.onload=function(){
-	const canvas = document.getElementById('myCanvas');//1.获取画布
-	const ctx = canvas.getContext('2d');//2.获取上下文
-	// const strokeStyleSelect = document.getElementById('strokeColorSelect');//改变颜色控件
-	// const strokeLineWidth = document.getElementById('strokeLineWidth');//改变线条宽度控件
+	// 画布
+	const canvas = document.getElementById('myCanvas');
+	// 上下文
+	const ctx = canvas.getContext('2d');
+	// 图片
 	const img = document.getElementById("image");
+	// 按钮
 	const btn = document.getElementById("btn")
+	// 预测结果
 	const prediction = document.getElementById('prediction');
 	
-	// 给画板填充颜色
+	// 给画板填充颜色（黑色）
 	ctx.fillStyle = '000000';
 	ctx.fillRect(0, 0, canvas.width, canvas.height)
 	
@@ -16,8 +19,8 @@ window.onload=function(){
 	let oldX = null;
 	let oldY = null;
 	
-	//设置画笔颜色
-	let lineColor = '#ffffff';  //默认线条颜色为黑色
+	//设置画笔颜色（白色）
+	let lineColor = '#ffffff';
 	
 	//设置画笔线宽
 	let lineWidth = 5;
@@ -60,14 +63,10 @@ window.onload=function(){
 		}
 	}
 	
-	
+	// 按钮点击事件
 	function send() {
-	    // 新Image对象，可以理解为DOM  
-	    // var image = new Image(); 
-	    // canvas.toDataURL 返回的是一串Base64编码的URL
-	    // 指定格式 JPG  
-	    img.src = canvas.toDataURL("image/jpg");  
-	    // return image;
+		// 将画布转换为图片，canvas.toDataURL 返回的是一串Base64编码的URL，格式为 JPG
+	    img.src = canvas.toDataURL("image/jpg");
 
 		console.log(img.src)
 
@@ -88,11 +87,11 @@ window.onload=function(){
 				return response.json();
 			})
 			.then(data => {
-				let predict = null;
 				if (data.result === 'success') {
-					prediction.innerHTML = '您书写的数字是：' + data.predict;
+					prediction.innerHTML = '预测结果：' + data.prediction;
 				} else if (data.result === 'fail') {
 					console.log('fail')
+					alert('fail to predict. Go to console for more information.');
 				}
 			})
 			.catch(error => {
@@ -108,5 +107,4 @@ window.onload=function(){
 		ctx.fillStyle = '000000';
 		ctx.fillRect(0, 0, canvas.width, canvas.height)
 	}
-
 };

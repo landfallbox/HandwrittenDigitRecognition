@@ -8,7 +8,11 @@
 
 import matplotlib.pyplot as plt
 
-from BackEnd.net import epochs, train, test, train_counter, train_losses
+from net import epochs, train, test, train_counter, train_losses, test_counter, test_losses
+
+import os
+
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 
 def draw():
@@ -16,8 +20,8 @@ def draw():
     fig = plt.figure()
 
     plt.plot(train_counter, train_losses, color='blue')
-    # plt.scatter(test_counter, test_losses, color='red')
-    # plt.plot(test_counter, test_losses, color='red')
+    plt.scatter(test_counter, test_losses, color='red')
+    plt.plot(test_counter, test_losses, color='red')
     plt.legend(['Train Loss', 'Test Loss'], loc='upper right')
 
     plt.title('Loss')
@@ -30,4 +34,5 @@ def draw():
 for epoch in range(1, epochs + 1):
     train(epoch)
     test()
-    # draw()
+
+draw()

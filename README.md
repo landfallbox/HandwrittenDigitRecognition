@@ -123,3 +123,7 @@ BackEnd
 > [(55条消息) 设置flask启动ip与端口_flask开放ip_bianlidou的博客-CSDN博客](https://blog.csdn.net/weixin_44936542/article/details/107343627)
 >
 > [ChatGPT](https://chat.openai.com/chat)
+>
+> [(55条消息) cv2和PIL.Image之间的转换_pil image 转为cv2_绑个蝴蝶结的博客-CSDN博客](https://blog.csdn.net/qq_38153833/article/details/88060268)
+>
+> [(55条消息) 解决Pycharm等待工程update index时间太长_pycharm更新索引太慢_broad-sky的博客-CSDN博客](https://blog.csdn.net/qq_37164776/article/details/119281264)

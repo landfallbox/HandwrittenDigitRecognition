@@ -84,8 +84,7 @@ network = Net().to(device)
 dataset_train = torchvision.datasets.MNIST('./data/', train=True, download=True,
                                            transform=torchvision.transforms.Compose(
                                                [torchvision.transforms.ToTensor(),
-                                                torchvision.transforms.Normalize((0.1307,), (0.3081,)),
-                                                torchvision.transforms.RandomRotation(15)
+                                                torchvision.transforms.Normalize((0.1307,), (0.3081,))
                                                 ])
                                            )
 # shuffle=True会在每个epoch重新打乱数据
@@ -114,7 +113,7 @@ def train(epoch):
         data = data.to(device)
         target = target.to(device)
 
-        # 手动设置梯度为0
+        # PyTorch默认会累加梯度，所以需要手动清空梯度
         optimizer.zero_grad()
 
         # 训练网络，得到预测值
@@ -193,6 +192,7 @@ def test():
 
     test_loss /= len(dataset_test)
     test_losses.append(test_loss)
+
     print('\nTest set: Avg. loss: {:.6f}, Accuracy: {}/{} ({:.0f}%)\n'.format(test_loss,
                                                                               correct, len(dataset_test),
                                                                               100. * correct / len(dataset_test)))
