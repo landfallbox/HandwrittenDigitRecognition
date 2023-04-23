@@ -18,30 +18,41 @@ import torch.optim as optim
 
 
 # 网络结构
-class Net(nn.Module):
+class CNN(nn.Module):
     def __init__(self):
-        super(Net, self).__init__()
-        # 第一个参数表示输入图像的通道数
-        # 第二个参数表示卷积产生的通道数
-        # kernel_size表示卷积核尺寸
+        super(CNN, self).__init__()
+
         # 默认步长是1，默认填充是0
-        self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
-        self.conv2 = nn.Conv2d(10, 20, kernel_size=5)
+        self.conv1 = nn.Sequential(
+            nn.Conv2d(in_channels=1, out_channels=10, kernel_size=5),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2)
+        )
+
+        self.conv2 = nn.Sequential(
+            nn.Conv2d(in_channels=10, out_channels=20, kernel_size=5),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=2)
+        )
         # 默认概率0.5
         self.conv2_drop = nn.Dropout2d()
-        # 第一个参数表示输入的向量的维度
-        # 第二个参数表示输出的向量的维度
-        self.fc1 = nn.Linear(320, 50)
+
+        self.fc1 = nn.Sequential(
+            nn.Linear(320, 50),
+            nn.ReLU()
+        )
+        self.fc1_drop = nn.Dropout()
+
         self.fc2 = nn.Linear(50, 10)
 
     def forward(self, x):
-        x = f.relu(f.max_pool2d(self.conv1(x), 2))
-        x = f.relu(f.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
+        x = self.conv1(x)
+        x = self.conv2(x)
+        x = self.conv2_drop(x)
         # print(x.shape)
         # 把向量铺平。其中，-1表示不确定
         x = x.view(-1, 320)
-        x = f.relu(self.fc1(x))
-        x = f.dropout(x, training=self.training)
+        x = self.fc1(x)
         x = self.fc2(x)
         return f.log_softmax(x, dim=1)
 
@@ -71,7 +82,8 @@ torch.manual_seed(random_seed)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # 初始化网络
-network = Net().to(device)
+network = CNN().to(device)
+# network = LeNet5(Basicblock, [1, 1, 1, 1], 10).to(device)
 
 # 加载训练数据集，创建训练器
 # 第一个参数：MNIST数据集的位置
@@ -81,12 +93,14 @@ network = Net().to(device)
 # ToTensor将原始的PILImage格式或者numpy.array格式的数据格式化为可被pytorch快速处理的张量类型。
 # Normalize将图像标准化
 # RandomRotation随机旋转
-dataset_train = torchvision.datasets.MNIST('./data/', train=True, download=True,
-                                           transform=torchvision.transforms.Compose(
-                                               [torchvision.transforms.ToTensor(),
-                                                torchvision.transforms.Normalize((0.1307,), (0.3081,))
-                                                ])
-                                           )
+dataset_train = torchvision.datasets.MNIST(
+    './data/', train=True, download=True,
+    transform=torchvision.transforms.Compose(
+        [torchvision.transforms.ToTensor(),
+         torchvision.transforms.Normalize((0.1307,), (0.3081,))
+         ]
+    )
+)
 # shuffle=True会在每个epoch重新打乱数据
 train_loader = torch.utils.data.DataLoader(dataset_train, batch_size=batch_size_train, shuffle=True)
 
@@ -97,12 +111,12 @@ optimizer = optim.SGD(network.parameters(), lr=learning_rate, momentum=momentum)
 # 训练网络
 def train(epoch):
     # 加载网络模型和参数
-    if os.path.exists('./model.pth'):
-        network.load_state_dict(torch.load('./model.pth'))
+    if os.path.exists('../model/CNN/model.pth'):
+        network.load_state_dict(torch.load('./model/model.pth'))
 
     # 加载优化器
-    if os.path.exists('./optimizer.pth'):
-        optimizer.load_state_dict(torch.load('./optimizer.pth'))
+    if os.path.exists('../model/CNN/optimizer.pth'):
+        optimizer.load_state_dict(torch.load('./model/optimizer.pth'))
 
     # 设置网络为训练模式
     network.train()
@@ -140,9 +154,9 @@ def train(epoch):
             # 保存训练的次数
             train_counter.append((batch_id * 64) + ((epoch - 1) * len(dataset_train)))
             # 保存网络模型和参数
-            torch.save(network.state_dict(), './model.pth')
+            torch.save(network.state_dict(), '../model/CNN/model.pth')
             # 保存优化器
-            torch.save(optimizer.state_dict(), './optimizer.pth')
+            torch.save(optimizer.state_dict(), '../model/CNN/optimizer.pth')
 
 
 # 测试相关变量
@@ -154,18 +168,20 @@ test_counter = []
 test_losses = []
 
 # 加载测试数据集，创建测试器
-dataset_test = torchvision.datasets.MNIST('./data/', train=False, download=True,
-                                          transform=torchvision.transforms.Compose(
-                                              [torchvision.transforms.ToTensor(),
-                                               torchvision.transforms.Normalize(
-                                                   (0.1307,), (0.3081,))]))
+dataset_test = torchvision.datasets.MNIST(
+    './data/', train=False, download=True, transform=torchvision.transforms.Compose(
+        [torchvision.transforms.ToTensor(),
+         torchvision.transforms.Normalize((0.1307,), (0.3081,))
+         ]
+    )
+)
 test_loader = torch.utils.data.DataLoader(dataset_test, batch_size=batch_size_test, shuffle=True)
 
 
 # 测试网络
 def test():
     # 加载网络模型和参数
-    network.load_state_dict(torch.load('./model.pth'))
+    network.load_state_dict(torch.load('./model/model.pth'))
 
     # 测试模式
     network.eval()

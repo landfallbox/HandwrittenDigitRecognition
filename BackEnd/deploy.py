@@ -12,23 +12,41 @@ import cv2
 import numpy as np
 import requests
 import torch
-from PIL import Image, ImageOps
+from PIL import Image
+from torchvision import models
 from torchvision.transforms import transforms
 
-from net import network, device
+from CNN.net import device, CNN
+from LeNet5.net import LeNet5
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
+import os
+
 
 app = Flask(__name__)
-# 启用调试模式
-app.debug = True
 # 解决跨域问题
 CORS(app)
 
 
+def get_img_from_url(url):
+    # 如果url是 base64 编码的图片数据
+    if url.startswith('data:image/'):
+        # 取出 base64 编码的数据部分
+        img_data = url.split(',')[1]
+        # 解码为二进制数据
+        img_binary = base64.b64decode(img_data)
+        img = Image.open(BytesIO(img_binary))
+    # 如果url是网络图片的地址
+    else:
+        response = requests.get(url)
+        img = Image.open(BytesIO(response.content))
+
+    return img
+
+
 # 图像预处理
-def process(img):
+def process_img(img, model_name):
     # 存放裁剪后的数字
     nums = []
 
@@ -36,8 +54,8 @@ def process(img):
     img = img.convert('L')
 
     # 二值化
-    threshold = 100
-    img = img.point(lambda x: 0 if x < threshold else 255)
+    # threshold = 100
+    # img = img.point(lambda x: 0 if x < threshold else 255)
 
     # 转numpy数组
     img_np = np.array(img)
@@ -60,6 +78,10 @@ def process(img):
         if num.size[0] != 28 or num.size[1] != 28:
             num = num.resize((28, 28))
 
+        # 保存到桌面
+        desktop = os.path.expanduser("~/Desktop")
+        num.save(desktop + '/output.jpg')
+
         # print(num.size)
 
         # 转为numpy数组
@@ -73,16 +95,10 @@ def process(img):
 
         print(num.shape)
 
-        # 转为tensor
-        num = torch.from_numpy(num)
-
-        # 均值
-        mean = 0.1307
-        # 标准差
-        std = 0.3081
-
-        # 标准化 / 归一化
-        transform = transforms.Normalize(mean=[mean], std=[std])
+        transform = transforms.Compose([
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,))
+        ])
         num = transform(num)
 
         print(num.shape)
@@ -93,57 +109,105 @@ def process(img):
     return nums
 
 
-@app.route('/test', methods=['POST'])
-def predict_from_url():
-    # 读取前端传来的数据
+def predict(model_name):
+    # 读前端传来的json
     data = request.get_json()
 
     if 'url' in data:
         # 取图片的url
-        img_url = data['url']
-
-        # 根据url读取图片
-        if img_url.startswith('data:image/'):
-            # 如果url是 base64 编码的图片数据
-            img_data = img_url.split(',')[1]  # 取出 base64 编码的数据部分
-            img_binary = base64.b64decode(img_data)  # 解码为二进制数据
-            img = Image.open(BytesIO(img_binary))
-        else:
-            # 如果url是网络图片的地址
-            response = requests.get(img_url)
-            img = Image.open(BytesIO(response.content))
-
-        # img.show()
-
-        # 图像预处理
-        imgs = process(img)
-
-        # 测试模式
-        network.eval()
-
-        # 存储预测结果
-        results = {}
-
-        for i, img in enumerate(imgs):
-            img = img.to(device)
-
-            # 预测手写数字
-            prediction = network(img).data.max(1, keepdim=True)[1].item()
-
-            if bool(results):
-                # 将预测结果添加到字典中
-                results = {'prediction': results.get('prediction') + str(prediction)}
-            else:
-                results = {'prediction': str(prediction)}
-
-        # 添加预测成功的标志
-        results = {'result': 'success', **results}
-
-        # json格式返回预测结果
-        return jsonify(results)
+        url = data['url']
+        img = get_img_from_url(url)
     else:
-        return jsonify({'result': 'fail', 'info': 'no url'})
+        return jsonify(
+            {
+                'flag': 'fail',
+                'results': {
+                    'info': 'no url',
+                    'url': '',
+                    'prediction(s)': ''
+                }
+            }
+        )
+
+    if model_name == 'CNN':
+        # 图像预处理
+        nums = process_img(img, model_name)
+
+        # 加载CNN模型，测试模式
+        net = CNN().to(device)
+        net.load_state_dict(torch.load('./model/CNN/model.pth'))
+        net.eval()
+    elif model_name == 'LeNet5':
+        # 图像预处理
+        nums = process_img(img, model_name)
+
+        # 加载LeNet5模型
+        net = LeNet5().to(device)
+        net.load_state_dict(torch.load('./model/LeNet5/model.pth'))
+    elif model_name == 'VGGNet':
+        # 图像预处理
+        nums = process_img(img, model_name)
+
+        # 加载VGGNet模型
+        net = models.vgg16(pretrained=False).to(device)
+        net.load_state_dict(torch.load('./model/VGGNet/model.pth'))
+    else:
+        # 模型名称不匹配
+        return jsonify(
+            {
+                'flag': 'fail',
+                'results': {
+                    'info': 'wrong model name',
+                    'url': '',
+                    'prediction(s)': ''
+                }
+            }
+        )
+
+    # 存储预测结果
+    results = {}
+
+    for _, num in enumerate(nums):
+        num = num.to(device)
+
+        # 预测手写数字
+        prediction = net(num).data.max(1, keepdim=True)[1].item()
+        print(prediction)
+
+        # 将预测结果添加到字典中
+        if bool(results):
+            results = {'prediction(s)': results.get('prediction(s)') + str(prediction)}
+        else:
+            results = {'prediction(s)': str(prediction)}
+
+    # 添加预测成功的标志
+    results = {
+        'flag': 'success',
+        'results': {
+            'info': '',
+            'url': url,
+            'prediction(s)': results.get('prediction(s)')
+        }
+    }
+
+    # json格式返回预测结果
+    return jsonify(results)
+
+
+@app.route('/predict_CNN', methods=['POST'])
+def predict_CNN():
+    return predict('CNN')
+
+
+@app.route('/predict_LeNet5', methods=['POST'])
+def predict_LeNet5():
+    return predict('LeNet5')
+
+
+@app.route('/predict_VGGNet', methods=['POST'])
+def predict_VGGNet():
+    return predict('VGGNet')
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host="127.0.0.1", port=5000, debug=True)

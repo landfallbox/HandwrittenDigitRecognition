@@ -71,7 +71,7 @@ window.onload=function(){
 		console.log(img.src)
 
 		// 以json格式向后端发送图片的url
-		fetch(`http://127.0.0.1:5000/test`, {
+		fetch(`http://127.0.0.1:5000/predict_VGGNet`, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json'
@@ -87,10 +87,11 @@ window.onload=function(){
 				return response.json();
 			})
 			.then(data => {
-				if (data.result === 'success') {
-					prediction.innerHTML = '预测结果：' + data.prediction;
-				} else if (data.result === 'fail') {
+				if (data.flag === 'success') {
+					prediction.innerHTML = '预测结果：' + data.results['prediction(s)'];
+				} else if (data.flag === 'fail') {
 					console.log('fail')
+					console.log(data.results.info)
 					alert('fail to predict. Go to console for more information.');
 				}
 			})

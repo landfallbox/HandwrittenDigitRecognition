@@ -7,8 +7,10 @@
 """
 
 import matplotlib.pyplot as plt
+import torch
 
-from net import epochs, train, test, train_counter, train_losses, test_counter, test_losses
+from net import epochs, train, test, train_counter, train_losses, test_counter, \
+    test_losses, train_loader, network
 
 import os
 
@@ -35,4 +37,4 @@ for epoch in range(1, epochs + 1):
     train(epoch)
     test()
 
-draw()
+# draw()
