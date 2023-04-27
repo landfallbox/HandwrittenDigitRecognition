@@ -23,6 +23,7 @@ from flask_cors import CORS
 
 import os
 
+from VGGNet.net import VGGNet
 
 app = Flask(__name__)
 # 解决跨域问题
@@ -54,8 +55,8 @@ def process_img(img, model_name):
     img = img.convert('L')
 
     # 二值化
-    # threshold = 100
-    # img = img.point(lambda x: 0 if x < threshold else 255)
+    threshold = 100
+    img = img.point(lambda x: 0 if x < threshold else 255)
 
     # 转numpy数组
     img_np = np.array(img)
@@ -84,21 +85,32 @@ def process_img(img, model_name):
 
         # print(num.size)
 
-        # 转为numpy数组
-        num = np.array(num).astype(np.float32)
+        # # 转为numpy数组
+        # num = np.array(num).astype(np.float32)
+        #
+        # print(num.shape)
+        #
+        # # 数组从 28*28 转 1*1*28*28
+        # num = np.expand_dims(num, 0)
+        # num = np.expand_dims(num, 0)
+        #
+        # print(num.shape)
 
-        print(num.shape)
-
-        # 数组从 28*28 转 1*1*28*28
-        num = np.expand_dims(num, 0)
-        num = np.expand_dims(num, 0)
-
-        print(num.shape)
-
-        transform = transforms.Compose([
-            transforms.ToTensor(),
-            transforms.Normalize((0.1307,), (0.3081,))
-        ])
+        # numpy数组转为张量
+        if model_name == 'CNN' or model_name == 'LeNet5':
+            transform = transforms.Compose([
+                transforms.ToTensor(),  # 转换为张量
+                transforms.Normalize((0.1307,), (0.3081,)),  # 归一化
+                transforms.Lambda(lambda x: x.view(1, 1, 28, 28))  # 数组从 28*28 转 1*1*28*28
+            ])
+        elif model_name == 'VGGNet':
+            transform = transforms.Compose([
+                transforms.Grayscale(num_output_channels=3),  # 转换为3通道的灰度图像
+                transforms.Resize(224),  # 调整大小为224x224
+                transforms.ToTensor(),  # 转换为张量
+                transforms.Normalize((0.1307,), (0.3081,)),  # 归一化
+                # transforms.Lambda(lambda x: x.view(1, 3, 224, 224))  # 数组从 28*28 转 1*1*28*28
+            ])
         num = transform(num)
 
         print(num.shape)
@@ -129,27 +141,21 @@ def predict(model_name):
             }
         )
 
-    if model_name == 'CNN':
-        # 图像预处理
-        nums = process_img(img, model_name)
+    # 图像预处理
+    nums = process_img(img, model_name)
 
+    if model_name == 'CNN':
         # 加载CNN模型，测试模式
         net = CNN().to(device)
         net.load_state_dict(torch.load('./model/CNN/model.pth'))
         net.eval()
     elif model_name == 'LeNet5':
-        # 图像预处理
-        nums = process_img(img, model_name)
-
-        # 加载LeNet5模型
+        # 加载LeNet5
         net = LeNet5().to(device)
         net.load_state_dict(torch.load('./model/LeNet5/model.pth'))
     elif model_name == 'VGGNet':
-        # 图像预处理
-        nums = process_img(img, model_name)
-
-        # 加载VGGNet模型
-        net = models.vgg16(pretrained=False).to(device)
+        # 加载VGGNet
+        net = VGGNet().to(device)
         net.load_state_dict(torch.load('./model/VGGNet/model.pth'))
     else:
         # 模型名称不匹配

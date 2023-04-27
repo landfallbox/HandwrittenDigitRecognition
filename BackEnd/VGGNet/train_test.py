@@ -6,9 +6,9 @@
  @SoftWare: PyCharm
 """
 
-from common.train import train
 from common.test import test
+from common.train import train
 
 if __name__ == '__main__':
-    train(epochs=5, model_name='VGGNet', batch_size=32)
+    train(epochs=5, model_name='VGGNet', batch_size=16)
     test(model_name='VGGNet')

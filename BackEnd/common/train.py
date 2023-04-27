@@ -14,21 +14,17 @@ from torch.utils.data import DataLoader
 from torchvision import transforms, datasets, models
 
 from LeNet5.net import LeNet5
+from VGGNet.net import VGGNet
 
 
 def load_net_opt_cri(model_name, device, lr, momentum):
     if model_name == 'LeNet5':
-        # 初始化LeNet-5网络
         net = LeNet5().to(device)
-        # 加载网络参数
         if os.path.exists('../model/LeNet5/model.pth'):
             net.load_state_dict(torch.load('../model/LeNet5/model.pth'))
     elif model_name == 'VGGNet':
-        # 初始化VGGNet网络
-        net = models.vgg16(pretrained=False).to(device)
-        # 加载网络参数
-        if os.path.exists('../model/VGGNet/model.pth'):
-            net.load_state_dict(torch.load('../model/VGGNet/model.pth'))
+        net = VGGNet.to(device)
+        net.load_state_dict(torch.load('../model/VGGNet/model.pth'))
     else:
         raise ValueError('model_name must be LeNet5 or VGGNet')
 
@@ -50,7 +46,7 @@ def load_net_opt_cri(model_name, device, lr, momentum):
 
 
 # 训练
-def train(epochs, model_name, lr=0.01, momentum=0.9, batch_size=64):
+def train(epochs, model_name, lr=0.001, momentum=0.9, batch_size=64):
     # 加载MNIST数据集
     if model_name == 'LeNet5':
         transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
@@ -67,8 +63,11 @@ def train(epochs, model_name, lr=0.01, momentum=0.9, batch_size=64):
 
     # 使用GPU训练
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print(device)
 
+    # 加载网络、优化器、损失函数
     net, optimizer, criterion = load_net_opt_cri(model_name, device, lr, momentum)
+    print(net)
 
     # 训练网络
     for epoch in range(epochs):
