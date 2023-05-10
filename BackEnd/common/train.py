@@ -5,72 +5,93 @@
  @DateTime: 2023/4/23 16:02
  @SoftWare: PyCharm
 """
-
 import os
 
 import torch
 from torch import nn, optim
 from torch.utils.data import DataLoader
-from torchvision import transforms, datasets, models
+from torchvision import datasets
 
-from LeNet5.net import LeNet5
-from VGGNet.net import VGGNet
-
-
-def load_net_opt_cri(model_name, device, lr, momentum):
-    if model_name == 'LeNet5':
-        net = LeNet5().to(device)
-        if os.path.exists('../model/LeNet5/model.pth'):
-            net.load_state_dict(torch.load('../model/LeNet5/model.pth'))
-    elif model_name == 'VGGNet':
-        net = VGGNet.to(device)
-        net.load_state_dict(torch.load('../model/VGGNet/model.pth'))
-    else:
-        raise ValueError('model_name must be LeNet5 or VGGNet')
-
-    # 定义优化器
-    optimizer = optim.SGD(net.parameters(), lr=lr, momentum=momentum)
-
-    # 加载优化器参数
-    if model_name == 'LeNet5':
-        if os.path.exists('../model/LeNet5/optimizer.pth'):
-            optimizer.load_state_dict(torch.load('../model/LeNet5/optimizer.pth'))
-    elif model_name == 'VGGNet':
-        if os.path.exists('../model/VGGNet/optimizer.pth'):
-            optimizer.load_state_dict(torch.load('../model/VGGNet/optimizer.pth'))
-
-    # 定义损失函数
-    criterion = nn.CrossEntropyLoss()
-
-    return net, optimizer, criterion
+from common.load_net import load_net
+from common.load_transform import load_transform
 
 
-# 训练
-def train(epochs, model_name, lr=0.001, momentum=0.9, batch_size=64):
-    # 加载MNIST数据集
-    if model_name == 'LeNet5':
-        transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
-    elif model_name == 'VGGNet':
-        transform = transforms.Compose([
-            transforms.Grayscale(num_output_channels=3),  # 转换为3通道的灰度图像
-            transforms.Resize(224),  # 调整大小为224x224
-            transforms.ToTensor(),  # 转换为张量
-            transforms.Normalize((0.1307,), (0.3081,))  # 归一化
-        ])
+# 加载训练集
+def load_train_loader(model_name, batch_size):
+    transform = load_transform(model_name)
 
     train_dataset = datasets.MNIST(root='../data', train=True, download=True, transform=transform)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 
-    # 使用GPU训练
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    print(device)
+    return train_loader
 
-    # 加载网络、优化器、损失函数
-    net, optimizer, criterion = load_net_opt_cri(model_name, device, lr, momentum)
+
+# 加载优化器
+def load_optimizer(net, lr, momentum, model_info):
+    optimizer = optim.SGD(net.parameters(), lr, momentum)
+
+    if model_info is not None:
+        optimizer.load_state_dict(model_info['optimizer_state_dict'])
+
+    return optimizer
+
+
+# 保存模型、优化器、损失、重启训练所需的参数
+def save_model(net, optimizer, loss, epoch, save_path):
+    print("Saving model...")
+
+    torch.save({
+        'model_state_dict': net.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'loss': loss,
+        'epoch': epoch,
+    }, save_path)
+
+    print("Model saved successfully to {}".format(save_path))
+
+
+# 训练
+def train(epochs, model_name, device, lr: float = 0.01, momentum: float = 0.9, batch_size: int = 64,
+          resume: bool = False):
+    print('Train device :' + device)
+
+    # 加载训练集
+    train_loader = load_train_loader(model_name, batch_size)
+
+    # 模型保存路径
+    save_path = '../model/' + model_name + '/model.pth'
+    print('Model save path : ' + save_path)
+
+    if os.path.exists(save_path):
+        model_info = torch.load(save_path)
+    else:
+        model_info = None
+
+    # 加载网络
+    net = load_net(model_name, device, model_info)
     print(net)
+    net.train()
+
+    # 加载优化器
+    optimizer = load_optimizer(net, lr, momentum, model_info)
+
+    # 加载保存的epoch
+    if resume:
+        start_epoch = model_info['epoch']
+    else:
+        start_epoch = 0
+
+    # 定义损失函数
+    criterion = nn.CrossEntropyLoss()
+
+    # 加载保存的损失
+    if model_info is not None:
+        saved_loss = model_info['loss']
+    else:
+        saved_loss = 10000.0
 
     # 训练网络
-    for epoch in range(epochs):
+    for epoch in range(start_epoch, epochs):
         for i, (images, labels) in enumerate(train_loader):
             images = images.to(device)
             labels = labels.to(device)
@@ -85,10 +106,10 @@ def train(epochs, model_name, lr=0.001, momentum=0.9, batch_size=64):
                 print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}'
                       .format(epoch + 1, epochs, i + 1, len(train_loader), loss.item()))
 
-            # 保存网络参数、优化器
-            if model_name == 'LeNet5':
-                torch.save(net.state_dict(), '../model/LeNet5/model.pth')
-                torch.save(optimizer.state_dict(), '../model/LeNet5/optimizer.pth')
-            elif model_name == 'VGGNet':
-                torch.save(net.state_dict(), '../model/VGGNet/model.pth')
-                torch.save(optimizer.state_dict(), '../model/VGGNet/optimizer.pth')
+                # 保存模型
+                if loss.item() < saved_loss:
+                    print('loss decrease from {:.4f} to {:.4f}'.format(saved_loss, loss.item()))
+                    save_model(net, optimizer, loss.item(), epoch, save_path)
+
+                    saved_loss = loss.item()
+

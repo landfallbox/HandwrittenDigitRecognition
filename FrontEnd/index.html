@@ -4,21 +4,27 @@
 		<meta charset="utf-8" />
 		<title>Test</title>
 		<link rel="stylesheet" href="./css/style.css">
-		<script type="text/javascript" src="./js/draw.js"></script>
+		<script type="text/javascript" src="js/script.js"></script>
 	</head>
 	<body>
-		<canvas id="myCanvas" class="myCanvas" width="480px" height="480px">
+		<canvas id="Canvas" class="Canvas" width="480px" height="480px">
 		    您的浏览器不支持canvas
-		    <!-- canvas标签内的内容只有在浏览器不支持canvas的情况下才显示出来 -->  
+		    <!-- canvas标签内的内容只有在浏览器不支持canvas的情况下才显示出来 -->
 		</canvas>
 		<img src="" alt="" id="image"/>
-		
+
+		<select id="select">
+			<option>CNN</option>
+			<option>LeNet5</option>
+			<option>AlexNet</option>
+		</select>
+
 		<br>
 
 		<p id="prediction">预测结果：</p>
 
 		<br>
-		
+
 		<button id="btn">识别</button>
 	</body>
 </html>

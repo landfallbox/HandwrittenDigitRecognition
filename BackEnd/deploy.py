@@ -13,17 +13,15 @@ import numpy as np
 import requests
 import torch
 from PIL import Image
-from torchvision import models
-from torchvision.transforms import transforms
 
-from CNN.net import device, CNN
-from LeNet5.net import LeNet5
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 import os
 
-from VGGNet.net import VGGNet
+from common.args import device
+from common.load_net import load_net
+from common.load_transform import load_transform
 
 app = Flask(__name__)
 # 解决跨域问题
@@ -46,6 +44,33 @@ def get_img_from_url(url):
     return img
 
 
+# 调整图片大小
+def resize_img(img, model_name):
+    # 根据模型的不同，设置不同的图片缩放后的大小和填充后的大小
+    if model_name == 'CNN' or model_name == 'LeNet5':
+        source_length, target_length = 14, 28
+    elif model_name == 'AlexNet':
+        source_length, target_length = 112, 224
+    else:
+        raise ValueError('model_name must be CNN, LeNet5 or AlexNet')
+
+    # 缩放图片，保持长宽比不变
+    img.thumbnail((source_length, source_length))
+
+    # 可视化缩放后的图片（测试）
+    desktop = os.path.expanduser("~/Desktop")
+    img.save(desktop + '/after_resize.jpg')
+
+    # 获取缩放后的宽度和高度
+    source_width, source_height = img.size
+
+    # 创建一个新的图像，背景为黑色，将原图像放在中间
+    img_padded = Image.new('L', (target_length, target_length), 0)
+    img_padded.paste(img, ((target_length - source_width) // 2, (target_length - source_height) // 2))
+
+    return img_padded
+
+
 # 图像预处理
 def process_img(img, model_name):
     # 存放裁剪后的数字
@@ -58,61 +83,35 @@ def process_img(img, model_name):
     threshold = 100
     img = img.point(lambda x: 0 if x < threshold else 255)
 
+    desktop = os.path.expanduser("~/Desktop")
+    img.save(desktop + '/before_crop.jpg')
+
     # 转numpy数组
     img_np = np.array(img)
 
     # 寻找轮廓
     contours, hierarchy = cv2.findContours(img_np, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+    # 按轮廓的 x 坐标排序，以便从左到右逐个识别数字
+    contours = sorted(contours, key=lambda c: cv2.boundingRect(c)[0])
+
     # 遍历轮廓并裁剪数字
-    for _, contour in enumerate(contours):
+    for i, contour in enumerate(contours):
         # 获取数字的矩形区域
         x, y, w, h = cv2.boundingRect(contour)
+        print(x, y, w, h)
 
-        # 将数字从原图中裁剪出来
+        # 裁剪数字
         num = img.crop((x, y, x + w, y + h))
+        num.save(desktop + '/after_crop' + str(i) + '.jpg')
 
-        # print(num.size)
-        # num.show()
+        # 调整大小
+        num = resize_img(num, model_name)
+        num.save(desktop + '/after_padding' + str(i) + '.jpg')
 
-        # 改变图片大小：28*28
-        if num.size[0] != 28 or num.size[1] != 28:
-            num = num.resize((28, 28))
-
-        # 保存到桌面
-        desktop = os.path.expanduser("~/Desktop")
-        num.save(desktop + '/output.jpg')
-
-        # print(num.size)
-
-        # # 转为numpy数组
-        # num = np.array(num).astype(np.float32)
-        #
-        # print(num.shape)
-        #
-        # # 数组从 28*28 转 1*1*28*28
-        # num = np.expand_dims(num, 0)
-        # num = np.expand_dims(num, 0)
-        #
-        # print(num.shape)
-
-        # numpy数组转为张量
-        if model_name == 'CNN' or model_name == 'LeNet5':
-            transform = transforms.Compose([
-                transforms.ToTensor(),  # 转换为张量
-                transforms.Normalize((0.1307,), (0.3081,)),  # 归一化
-                transforms.Lambda(lambda x: x.view(1, 1, 28, 28))  # 数组从 28*28 转 1*1*28*28
-            ])
-        elif model_name == 'VGGNet':
-            transform = transforms.Compose([
-                transforms.Grayscale(num_output_channels=3),  # 转换为3通道的灰度图像
-                transforms.Resize(224),  # 调整大小为224x224
-                transforms.ToTensor(),  # 转换为张量
-                transforms.Normalize((0.1307,), (0.3081,)),  # 归一化
-                # transforms.Lambda(lambda x: x.view(1, 3, 224, 224))  # 数组从 28*28 转 1*1*28*28
-            ])
-        num = transform(num)
-
+        # 转为tensor
+        transform = load_transform(model_name)
+        num = transform(num).unsqueeze(0)
         print(num.shape)
 
         # 将裁剪后的每个图片添加到列表中
@@ -125,8 +124,8 @@ def predict(model_name):
     # 读前端传来的json
     data = request.get_json()
 
+    # 取url，如果没有url则返回错误信息。根据url获取图片
     if 'url' in data:
-        # 取图片的url
         url = data['url']
         img = get_img_from_url(url)
     else:
@@ -144,26 +143,17 @@ def predict(model_name):
     # 图像预处理
     nums = process_img(img, model_name)
 
-    if model_name == 'CNN':
-        # 加载CNN模型，测试模式
-        net = CNN().to(device)
-        net.load_state_dict(torch.load('./model/CNN/model.pth'))
-        net.eval()
-    elif model_name == 'LeNet5':
-        # 加载LeNet5
-        net = LeNet5().to(device)
-        net.load_state_dict(torch.load('./model/LeNet5/model.pth'))
-    elif model_name == 'VGGNet':
-        # 加载VGGNet
-        net = VGGNet().to(device)
-        net.load_state_dict(torch.load('./model/VGGNet/model.pth'))
-    else:
-        # 模型名称不匹配
+    # 加载模型
+    net = load_net(model_name, device, torch.load('./model/' + model_name + '/model.pth'))
+    net.eval()
+
+    # 模型名称不匹配
+    if not bool(net):
         return jsonify(
             {
                 'flag': 'fail',
                 'results': {
-                    'info': 'wrong model name',
+                    'info': 'Wrong model name. Model must be CNN, LeNet5, AlexNet or VGGNet. Check your request.',
                     'url': '',
                     'prediction(s)': ''
                 }
@@ -177,8 +167,10 @@ def predict(model_name):
         num = num.to(device)
 
         # 预测手写数字
-        prediction = net(num).data.max(1, keepdim=True)[1].item()
-        print(prediction)
+        prediction = net(num)
+        print(prediction.data.tolist())
+        prediction = torch.argmax(prediction, dim=1).item()
+        print('Prediction: ' + str(prediction))
 
         # 将预测结果添加到字典中
         if bool(results):
@@ -200,19 +192,19 @@ def predict(model_name):
     return jsonify(results)
 
 
-@app.route('/predict_CNN', methods=['POST'])
+@app.route('/predict/CNN', methods=['POST'])
 def predict_CNN():
     return predict('CNN')
 
 
-@app.route('/predict_LeNet5', methods=['POST'])
+@app.route('/predict/LeNet5', methods=['POST'])
 def predict_LeNet5():
     return predict('LeNet5')
 
 
-@app.route('/predict_VGGNet', methods=['POST'])
-def predict_VGGNet():
-    return predict('VGGNet')
+@app.route('/predict/AlexNet', methods=['POST'])
+def predict_AlexNet():
+    return predict('AlexNet')
 
 
 if __name__ == '__main__':

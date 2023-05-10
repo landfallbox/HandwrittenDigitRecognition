@@ -8,43 +8,35 @@
 
 import torch
 from torch.utils.data import DataLoader
-from torchvision import transforms, datasets, models
+from torchvision import datasets
 
-from LeNet5.net import LeNet5
-from VGGNet.net import VGGNet
+from common.load_transform import load_transform
+from common.train import load_net
 
 
-# 测试
-def test(model_name):
-    # 设置超参数
-    batch_size = 64
-
-    # 使用GPU测试
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-    if model_name == 'LeNet5':
-        transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))])
-        # 初始化LeNet-5网络，加载网络参数
-        net = LeNet5().to(device)
-        net.load_state_dict(torch.load('../model/LeNet5/model.pth'))
-    elif model_name == 'VGGNet':
-        transform = transforms.Compose([
-            transforms.Grayscale(num_output_channels=3),  # 转换为3通道的灰度图像
-            transforms.Resize(224),  # 调整大小为224x224
-            transforms.ToTensor(),  # 转换为张量
-            transforms.Normalize((0.1307,), (0.3081,))  # 归一化
-        ])
-        # 初始化VGGNet网络，加载网络参数
-        net = VGGNet.to(device)
-        net.load_state_dict(torch.load('../model/VGGNet/model.pth'))
+# 加载测试集
+def load_test_loader(model_name, batch_size):
+    transform = load_transform(model_name)
 
     test_dataset = datasets.MNIST(root='../data', train=False, download=True, transform=transform)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
+    return test_loader
+
+
+# 测试
+def test(model_name, device, batch_size: int = 100):
+    # 加载测试集
+    test_loader = load_test_loader(model_name, batch_size)
+
+    # 加载模型
+    net = load_net(model_name, device, torch.load('../model/' + model_name + '/model.pth'))
+    net.eval()
+
     with torch.no_grad():
         correct = 0
         total = 0
-        for images, labels in test_loader:
+        for i, (images, labels) in enumerate(test_loader):
             images = images.to(device)
             labels = labels.to(device)
             outputs = net(images)
@@ -52,4 +44,6 @@ def test(model_name):
             total += labels.size(0)
             correct += (prediction == labels).sum().item()
 
-        print('Accuracy of the network on the 10000 test images: {} %'.format(100 * correct / total))
+            if i * batch_size % 1000 == 0:
+                print('Accuracy of the network on the {} test images: {} %'.
+                      format((i + 10) * 100, 100 * correct / total))
