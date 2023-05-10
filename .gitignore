@@ -2,3 +2,5 @@
 BackEnd/model/AlexNet/model.pth
 BackEnd/model/CNN/model.pth
 BackEnd/model/LeNet5/model.pth
+BackEnd/model/CNN/model.pth
+BackEnd/model/LeNet5/model.pth
