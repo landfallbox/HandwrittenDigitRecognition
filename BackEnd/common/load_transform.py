@@ -9,9 +9,9 @@ from torchvision import transforms
 
 
 def load_transform(model_name):
-    if model_name == 'CNN' or model_name == 'LeNet5':
+    if model_name == 'LeNet5':
         transform = transforms.Compose([
-            transforms.Resize((28, 28)),
+            transforms.Resize((32, 32)),
             transforms.ToTensor(),
             transforms.Normalize((0.1307,), (0.3081,)),
         ])
@@ -23,6 +23,6 @@ def load_transform(model_name):
             transforms.Normalize((0.1307,), (0.3081,)),
         ])
     else:
-        raise ValueError('model_name must be CNN, LeNet5 or AlexNet')
+        raise ValueError('model_name must be LeNet5 or AlexNet')
 
     return transform

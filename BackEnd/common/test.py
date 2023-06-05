@@ -5,8 +5,10 @@
  @DateTime: 2023/4/23 16:09
  @SoftWare: PyCharm
 """
+import os
 
 import torch
+from sklearn.metrics import confusion_matrix, classification_report
 from torch.utils.data import DataLoader
 from torchvision import datasets
 
@@ -36,14 +38,34 @@ def test(model_name, device, batch_size: int = 100):
     with torch.no_grad():
         correct = 0
         total = 0
+        all_predictions = []
+        all_labels = []
+        # processed_samples = 0
+
         for i, (images, labels) in enumerate(test_loader):
             images = images.to(device)
             labels = labels.to(device)
             outputs = net(images)
-            _, prediction = torch.max(outputs.data, 1)
+            _, predictions = torch.max(outputs.data, 1)
             total += labels.size(0)
-            correct += (prediction == labels).sum().item()
+            correct += (predictions == labels).sum().item()
 
-            if i * batch_size % 1000 == 0:
-                print('Accuracy of the network on the {} test images: {} %'.
-                      format((i + 10) * 100, 100 * correct / total))
+            all_predictions.extend(predictions.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
+
+            # if total % 1000 == 0:
+            #     # print('Accuracy of the network on the {} test images: {} %'.
+            #     #       format((i + 10) * 100, 100 * correct / total))
+            #
+            #     accuracy = 100 * correct / total
+            #     print('Accuracy after {} samples: {} %'.format(total, accuracy))
+
+        # 计算混淆矩阵
+        cm = confusion_matrix(all_labels, all_predictions)
+        print("Confusion Matrix:")
+        print(cm)
+
+        # 计算精确率、召回率和F1-score
+        report = classification_report(all_labels, all_predictions)
+        print("Classification Report:")
+        print(report)

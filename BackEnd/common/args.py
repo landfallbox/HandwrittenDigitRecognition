@@ -21,3 +21,6 @@ momentum = 0.9
 
 # dropout概率
 dropout = 0.5
+
+# loss
+loss_values = []

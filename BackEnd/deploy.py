@@ -12,7 +12,7 @@ import cv2
 import numpy as np
 import requests
 import torch
-from PIL import Image
+from PIL import Image, ImageDraw
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -22,6 +22,8 @@ import os
 from common.args import device
 from common.load_net import load_net
 from common.load_transform import load_transform
+
+import torch.nn.functional as F
 
 app = Flask(__name__)
 # 解决跨域问题
@@ -47,12 +49,12 @@ def get_img_from_url(url):
 # 调整图片大小
 def resize_img(img, model_name):
     # 根据模型的不同，设置不同的图片缩放后的大小和填充后的大小
-    if model_name == 'CNN' or model_name == 'LeNet5':
+    if model_name == 'LeNet5':
         source_length, target_length = 14, 28
     elif model_name == 'AlexNet':
         source_length, target_length = 112, 224
     else:
-        raise ValueError('model_name must be CNN, LeNet5 or AlexNet')
+        raise ValueError('model_name must be LeNet5 or AlexNet')
 
     # 缩放图片，保持长宽比不变
     img.thumbnail((source_length, source_length))
@@ -89,8 +91,11 @@ def process_img(img, model_name):
     # 转numpy数组
     img_np = np.array(img)
 
+    # numpy数组转三通道图，用于绘制轮廓
+    img_draw = cv2.cvtColor(img_np, cv2.COLOR_GRAY2RGB)
+
     # 寻找轮廓
-    contours, hierarchy = cv2.findContours(img_np, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours, hierarchy = cv2.findContours(image=img_np, mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_SIMPLE)
 
     # 按轮廓的 x 坐标排序，以便从左到右逐个识别数字
     contours = sorted(contours, key=lambda c: cv2.boundingRect(c)[0])
@@ -100,6 +105,15 @@ def process_img(img, model_name):
         # 获取数字的矩形区域
         x, y, w, h = cv2.boundingRect(contour)
         print(x, y, w, h)
+
+        # 绘制矩形区域（测试）
+        cv2.rectangle(img_draw, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        cv2.imwrite(desktop + '/img_with_contour.jpg', img_draw)
+
+        # 将绘制轮廓后的图片转为 base64 编码
+        _, img_encoded = cv2.imencode('.jpg', img_draw)
+        img_bytes = img_encoded.tobytes()
+        img_base64 = base64.b64encode(img_bytes).decode('utf-8')
 
         # 裁剪数字
         num = img.crop((x, y, x + w, y + h))
@@ -117,7 +131,7 @@ def process_img(img, model_name):
         # 将裁剪后的每个图片添加到列表中
         nums.append(num)
 
-    return nums
+    return nums, img_base64
 
 
 def predict(model_name):
@@ -141,7 +155,8 @@ def predict(model_name):
         )
 
     # 图像预处理
-    nums = process_img(img, model_name)
+    nums, img_base64 = process_img(img, model_name)
+    # print("img base64 url :" + img_base64)
 
     # 加载模型
     net = load_net(model_name, device, torch.load('./model/' + model_name + '/model.pth'))
@@ -153,7 +168,7 @@ def predict(model_name):
             {
                 'flag': 'fail',
                 'results': {
-                    'info': 'Wrong model name. Model must be CNN, LeNet5, AlexNet or VGGNet. Check your request.',
+                    'info': 'Wrong model name. Model must be LeNet5, AlexNet or VGGNet. Check your request.',
                     'url': '',
                     'prediction(s)': ''
                 }
@@ -169,32 +184,35 @@ def predict(model_name):
         # 预测手写数字
         prediction = net(num)
         print(prediction.data.tolist())
-        prediction = torch.argmax(prediction, dim=1).item()
-        print('Prediction: ' + str(prediction))
 
-        # 将预测结果添加到字典中
+        # 获取预测结果和对应的概率
+        predicted_label = torch.argmax(prediction, dim=1).item()
+        predicted_prob = float(torch.max(F.softmax(prediction, dim=1)).cpu().detach().numpy())
+
+        print('Prediction: ' + str(predicted_label))
+        print('Probability: ' + str(predicted_prob))
+
+        # 将预测结果和概率添加到字典中
         if bool(results):
-            results = {'prediction(s)': results.get('prediction(s)') + str(prediction)}
+            results = {'prediction(s)': results.get('prediction(s)') + str(predicted_label),
+                       'probability': results.get('probability') + predicted_prob}
         else:
-            results = {'prediction(s)': str(prediction)}
+            results = {'prediction(s)': str(predicted_label), 'probability': predicted_prob}
 
     # 添加预测成功的标志
     results = {
         'flag': 'success',
+        'url': url,
+        'img': img_base64,
         'results': {
             'info': '',
-            'url': url,
-            'prediction(s)': results.get('prediction(s)')
+            'prediction(s)': results.get('prediction(s)'),
+            'probability': results.get('probability') / len(nums)
         }
     }
 
     # json格式返回预测结果
     return jsonify(results)
-
-
-@app.route('/predict/CNN', methods=['POST'])
-def predict_CNN():
-    return predict('CNN')
 
 
 @app.route('/predict/LeNet5', methods=['POST'])

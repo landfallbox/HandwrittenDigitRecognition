@@ -24,7 +24,7 @@ print("training set :", train_set[0].size())
 print("test set :", test_set[0].size())
 
 
-def fun(file, data_path, data_set):
+def convert(file, data_path, data_set):
     if not os.path.exists(data_path):
         os.makedirs(data_path)
 
@@ -41,12 +41,12 @@ def convert_to_img(train=True):
         file = open('data/train.txt', 'w')
         data_path = 'data/train/'
 
-        fun(file, data_path, train_set)
+        convert(file, data_path, train_set)
     else:
         file = open('data/test.txt', 'w')
         data_path = 'data/test/'
 
-        fun(file, data_path, test_set)
+        convert(file, data_path, test_set)
 
 
 convert_to_img(True)  # 转换训练集

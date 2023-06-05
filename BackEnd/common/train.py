@@ -14,6 +14,11 @@ from torchvision import datasets
 
 from common.load_net import load_net
 from common.load_transform import load_transform
+from common.args import loss_values
+
+import matplotlib.pyplot as plt
+
+os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
 
 
 # 加载训练集
@@ -69,7 +74,7 @@ def train(epochs, model_name, device, lr: float = 0.01, momentum: float = 0.9, b
 
     # 加载网络
     net = load_net(model_name, device, model_info)
-    print(net)
+    # print(net)
     net.train()
 
     # 加载优化器
@@ -106,6 +111,9 @@ def train(epochs, model_name, device, lr: float = 0.01, momentum: float = 0.9, b
                 print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}'
                       .format(epoch + 1, epochs, i + 1, len(train_loader), loss.item()))
 
+                # 每100个样本记录一次loss值
+                loss_values.append(loss.item())
+
                 # 保存模型
                 if loss.item() < saved_loss:
                     print('loss decrease from {:.4f} to {:.4f}'.format(saved_loss, loss.item()))
@@ -113,3 +121,9 @@ def train(epochs, model_name, device, lr: float = 0.01, momentum: float = 0.9, b
 
                     saved_loss = loss.item()
 
+    # print(loss_values)
+
+    # 绘制loss的变化图表
+    plt.plot(range(len(loss_values)), loss_values)
+    plt.title('Training Loss')
+    plt.show()
