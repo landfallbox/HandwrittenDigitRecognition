@@ -83,7 +83,7 @@ function click() {
     console.log("request url : " + request_url)
 
     // 以json格式向后端发送图片的url
-    fetch(request_url, {
+    fetch(request_url + url, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json'

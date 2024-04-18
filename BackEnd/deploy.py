@@ -6,18 +6,17 @@
  @SoftWare: PyCharm
 """
 import base64
+import os
 from io import BytesIO
 
 import cv2
 import numpy as np
 import requests
 import torch
-from PIL import Image, ImageDraw
+from PIL import Image
 
-from flask import Flask, request, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
-
-import os
 
 from common.args import device
 from common.load_net import load_net
@@ -27,7 +26,7 @@ import torch.nn.functional as F
 
 app = Flask(__name__)
 # 解决跨域问题
-CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 
 def get_img_from_url(url):
@@ -60,8 +59,8 @@ def resize_img(img, model_name):
     img.thumbnail((source_length, source_length))
 
     # 可视化缩放后的图片（测试）
-    desktop = os.path.expanduser("~/Desktop")
-    img.save(desktop + '/after_resize.jpg')
+    # desktop = "D:\\6429"
+    # img.save('D:/6429/Pictures/after_resize.jpg')
 
     # 获取缩放后的宽度和高度
     source_width, source_height = img.size
@@ -74,9 +73,12 @@ def resize_img(img, model_name):
 
 
 # 图像预处理
-def process_img(img, model_name):
-    # 存放裁剪后的数字
-    nums = []
+def process_img(img, model):
+    # 神经网络的输入张量，每个张量对应一个数字
+    inputs = []
+
+    # 颜色反转
+    img = Image.fromarray(cv2.cvtColor(np.array(img), cv2.COLOR_BGR2RGB))
 
     # 灰度化
     img = img.convert('L')
@@ -85,10 +87,10 @@ def process_img(img, model_name):
     threshold = 100
     img = img.point(lambda x: 0 if x < threshold else 255)
 
-    desktop = os.path.expanduser("~/Desktop")
-    img.save(desktop + '/before_crop.jpg')
+    # desktop = os.path.expanduser("~/Desktop")
+    # img.save(desktop + '/before_crop.jpg')
 
-    # 转numpy数组
+    # 图片转numpy数组，用于寻找轮廓
     img_np = np.array(img)
 
     # numpy数组转三通道图，用于绘制轮廓
@@ -100,89 +102,84 @@ def process_img(img, model_name):
     # 按轮廓的 x 坐标排序，以便从左到右逐个识别数字
     contours = sorted(contours, key=lambda c: cv2.boundingRect(c)[0])
 
-    # 遍历轮廓并裁剪数字
+    # 遍历轮廓
     for i, contour in enumerate(contours):
-        # 获取数字的矩形区域
+        # 在图片上绘制轮廓
         x, y, w, h = cv2.boundingRect(contour)
-        print(x, y, w, h)
-
-        # 绘制矩形区域（测试）
         cv2.rectangle(img_draw, (x, y), (x + w, y + h), (0, 255, 0), 2)
-        cv2.imwrite(desktop + '/img_with_contour.jpg', img_draw)
-
-        # 将绘制轮廓后的图片转为 base64 编码
-        _, img_encoded = cv2.imencode('.jpg', img_draw)
-        img_bytes = img_encoded.tobytes()
-        img_base64 = base64.b64encode(img_bytes).decode('utf-8')
+        # print(x, y, w, h)
+        # cv2.imwrite(desktop + '/img_with_contour.jpg', img_draw)
 
         # 裁剪数字
-        num = img.crop((x, y, x + w, y + h))
-        num.save(desktop + '/after_crop' + str(i) + '.jpg')
+        img_with_single_num = img.crop((x, y, x + w, y + h))
+        # num.save(desktop + '/after_crop' + str(i) + '.jpg')
 
         # 调整大小
-        num = resize_img(num, model_name)
-        num.save(desktop + '/after_padding' + str(i) + '.jpg')
+        img_with_single_num = resize_img(img_with_single_num, model)
+        # num.save(desktop + '/after_padding' + str(i) + '.jpg')
 
-        # 转为tensor
-        transform = load_transform(model_name)
-        num = transform(num).unsqueeze(0)
-        print(num.shape)
+        # 图片转为tensor
+        transform = load_transform(model)
+        img_with_single_num_tensor = transform(img_with_single_num).unsqueeze(0)
+        # print(img_with_single_num_tensor.shape)
 
-        # 将裁剪后的每个图片添加到列表中
-        nums.append(num)
+        # 添加tensor到列表中
+        inputs.append(img_with_single_num_tensor)
 
-    return nums, img_base64
+    # 将绘制轮廓后的图片转为 base64 编码
+    _, img_encoded = cv2.imencode('.jpg', img_draw)
+    img_bytes = img_encoded.tobytes()
+    img_with_contours_base64 = base64.b64encode(img_bytes).decode('utf-8')
+
+    return inputs, img_with_contours_base64
 
 
-def predict(model_name):
-    # 读前端传来的json
-    data = request.get_json()
+@app.route("/predict", methods=['POST'])
+def predict():
+    # 获取请求中的参数
+    image_base64 = request.json.get('image')
+    model = request.json.get('model')
 
-    # 取url，如果没有url则返回错误信息。根据url获取图片
-    if 'url' in data:
-        url = data['url']
-        img = get_img_from_url(url)
-    else:
+    # 模型只支持 LeNet5, AlexNet 和 ResNet
+    if model not in ['LeNet5', 'AlexNet', 'ResNet']:
         return jsonify(
             {
                 'flag': 'fail',
                 'results': {
-                    'info': 'no url',
+                    'info': 'Wrong model name. Model must be LeNet5, AlexNet or Resnet. Check your request.',
                     'url': '',
                     'prediction(s)': ''
                 }
             }
         )
 
-    # 图像预处理
-    nums, img_base64 = process_img(img, model_name)
-    # print("img base64 url :" + img_base64)
+    # 根据 url 获取图片
+    img = get_img_from_url(image_base64)
+
+    # 可视化图片（测试）
+    save_path = 'D:/6429'
+    if not os.path.exists(save_path):
+        os.makedirs(save_path)
+    img.convert('RGB').save(save_path + '/original.jpg')
+
+    # 图像预处理，返回 tensor 列表和 base64 编码的图片
+    # 每个 tensor 对应一个数字
+    # 图片中给每个数字加上轮廓，方便查看
+    inputs, img_base64 = process_img(img, model)
 
     # 加载模型
-    net = load_net(model_name, device, torch.load('./model/' + model_name + '/model.pth'))
+    net = load_net(model, device, torch.load('./model/' + model + '/model.pth'))
     net.eval()
 
-    # 模型名称不匹配
-    if not bool(net):
-        return jsonify(
-            {
-                'flag': 'fail',
-                'results': {
-                    'info': 'Wrong model name. Model must be LeNet5, AlexNet or VGGNet. Check your request.',
-                    'url': '',
-                    'prediction(s)': ''
-                }
-            }
-        )
-
-    # 存储预测结果
+    # 预测结果
     results = {}
 
-    for _, num in enumerate(nums):
-        num = num.to(device)
+    # 遍历处理后的图片 逐个预测结果
+    for _, num_tensor in enumerate(inputs):
+        num_tensor = num_tensor.to(device)
 
-        # 预测手写数字
-        prediction = net(num)
+        # 神经网络识别手写数字
+        prediction = net(num_tensor)
         print(prediction.data.tolist())
 
         # 获取预测结果和对应的概率
@@ -192,7 +189,7 @@ def predict(model_name):
         print('Prediction: ' + str(predicted_label))
         print('Probability: ' + str(predicted_prob))
 
-        # 将预测结果和概率添加到字典中
+        # 添加预测结果和概率到字典中
         if bool(results):
             results = {'prediction(s)': results.get('prediction(s)') + str(predicted_label),
                        'probability': results.get('probability') + predicted_prob}
@@ -202,27 +199,16 @@ def predict(model_name):
     # 添加预测成功的标志
     results = {
         'flag': 'success',
-        'url': url,
         'img': img_base64,
         'results': {
             'info': '',
             'prediction(s)': results.get('prediction(s)'),
-            'probability': results.get('probability') / len(nums)
+            'probability': results.get('probability') / len(inputs)
         }
     }
 
     # json格式返回预测结果
     return jsonify(results)
-
-
-@app.route('/predict/LeNet5', methods=['POST'])
-def predict_LeNet5():
-    return predict('LeNet5')
-
-
-@app.route('/predict/AlexNet', methods=['POST'])
-def predict_AlexNet():
-    return predict('AlexNet')
 
 
 if __name__ == '__main__':

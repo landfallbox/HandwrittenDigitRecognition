@@ -5,6 +5,7 @@
  @DateTime: 2023/4/23 16:02
  @SoftWare: PyCharm
 """
+import datetime
 import os
 
 import torch
@@ -64,7 +65,8 @@ def train(epochs, model_name, device, lr: float = 0.01, momentum: float = 0.9, b
     train_loader = load_train_loader(model_name, batch_size)
 
     # 模型保存路径
-    save_path = '../model/' + model_name + '/model.pth'
+    file_name = "model-" + str(epochs) + "-" + datetime.datetime.now().strftime('%Y%m%d%H%M')
+    save_path = '../model/' + model_name + '/' + file_name + '.pth'
     print('Model save path : ' + save_path)
 
     if os.path.exists(save_path):
